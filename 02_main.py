@@ -1,9 +1,8 @@
-
 import tensorflow as tf
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
-
+import os
 
 class GAN:
     def __init__(self, noise_dim):
@@ -67,15 +66,37 @@ def load_and_preprocess_data(filename):
     data = data.reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
     return data
 
-
-def visualize_progress(epoch, generator, noise_dim):
-    noise = tf.random.normal([16, noise_dim])
+def visualize_progress(epoch, generator, noise_dim, real_images, avg_disc_loss, avg_gen_loss):
+    num_real_images = len(real_images)
+    noise = tf.random.normal([num_real_images, noise_dim])  # Adjusted noise shape
     generated_images = generator(noise, training=False)
-    fig, axes = plt.subplots(4, 4, figsize=(8, 8))
-    for i, ax in enumerate(axes.flat):
-        ax.imshow(generated_images[i] * 0.5 + 0.5)
-        ax.axis('off')
-    plt.show()
+
+    fig, axes = plt.subplots(2, num_real_images, figsize=(16, 4))
+
+    # Loop for real images
+    for i in range(num_real_images):
+        axes[0, i].imshow(real_images[i] * 0.5 + 0.5)
+        axes[0, i].axis('off')
+        axes[0, i].set_title('Real')
+    
+    # Loop for generated images
+    for i in range(num_real_images):
+        axes[1, i].imshow(generated_images[i] * 0.5 + 0.5)
+        axes[1, i].axis('off')
+        axes[1, i].set_title('Generated')
+
+    plt.suptitle(f"Epoch: {epoch}, Avg Disc Loss: {avg_disc_loss:.4f}, Avg Gen Loss: {avg_gen_loss:.4f}")
+    plt.tight_layout()
+
+    save_dir = 'images'
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    plt.savefig(os.path.join(save_dir, f"epoch_{epoch}.png"))
+
+    if epoch % 5 == 0:
+        plt.show()
+    else:
+        plt.close()
 
 
 if __name__ == "__main__":
@@ -110,8 +131,7 @@ if __name__ == "__main__":
             # Log to TensorBoard
             with gan.train_summary_writer.as_default():
                 tf.summary.scalar('Generator Loss', gen_loss, step=step_counter)
-                tf.summary.scalar('Discriminator Loss',
-                                disc_loss, step=step_counter)
+                tf.summary.scalar('Discriminator Loss', disc_loss, step=step_counter)
 
             step_counter += 1
 
@@ -130,4 +150,5 @@ if __name__ == "__main__":
         avg_gen_loss = gen_loss_sum / len(dataset)
 
         print(f"Epoch {epoch}/{epochs}, Avg Disc Loss: {avg_disc_loss.numpy()}, Avg Gen Loss: {avg_gen_loss.numpy()}")
-        visualize_progress(epoch, gan.generator, noise_dim)
+        real_batch = next(iter(dataset.take(1)))[:8]
+        visualize_progress(epoch, gan.generator, noise_dim, real_batch, avg_disc_loss, avg_gen_loss)
