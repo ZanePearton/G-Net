@@ -68,38 +68,37 @@ def visualize_progress(epoch, generator, noise_dim):
 
 if __name__ == "__main__":
     noise_dim = 100
-    data = load_and_preprocess_data('data/data_batch_1')
+    data = load_and_preprocess_data('dat/data_batch_2')
     dataset = tf.data.Dataset.from_tensor_slices(data).shuffle(len(data)).batch(64, drop_remainder=True)
 
     gan = GAN(noise_dim)
     step_counter = 0
     epochs = 100
-    for epoch in range(epochs): 
-        for batch in dataset:
-            batch_size = batch.shape[0]
-            noise = tf.random.normal([batch_size, noise_dim])
+for epoch in range(epochs): 
+    for batch in dataset:
+        batch_size = batch.shape[0]
+        noise = tf.random.normal([batch_size, noise_dim])
 
-            with tf.GradientTape() as disc_tape, tf.GradientTape() as gen_tape:
-                generated_images = gan.generator(noise, training=True)
-                real_output = gan.discriminator(batch, training=True)
-                fake_output = gan.discriminator(generated_images, training=True)
+        with tf.GradientTape() as disc_tape, tf.GradientTape() as gen_tape:
+            generated_images = gan.generator(noise, training=True)
+            real_output = gan.discriminator(batch, training=True)
+            fake_output = gan.discriminator(generated_images, training=True)
 
-                gen_loss = gan.generator_loss(fake_output)
-                disc_loss = gan.discriminator_loss(real_output, fake_output)
+            gen_loss = gan.generator_loss(fake_output)
+            disc_loss = gan.discriminator_loss(real_output, fake_output)
 
-            # Log to TensorBoard
-            with gan.train_summary_writer.as_default():
-                tf.summary.scalar('Generator Loss', gen_loss, step=step_counter)
-                tf.summary.scalar('Discriminator Loss', disc_loss, step=step_counter)
+        # Log to TensorBoard
+        with gan.train_summary_writer.as_default():
+            tf.summary.scalar('Generator Loss', gen_loss, step=step_counter)
+            tf.summary.scalar('Discriminator Loss', disc_loss, step=step_counter)
 
-            step_counter += 1
+        step_counter += 1
 
-            gradients_of_generator = gen_tape.gradient(gen_loss, gan.generator.trainable_variables)
-            gradients_of_discriminator = disc_tape.gradient(disc_loss, gan.discriminator.trainable_variables)
+        gradients_of_generator = gen_tape.gradient(gen_loss, gan.generator.trainable_variables)
+        gradients_of_discriminator = disc_tape.gradient(disc_loss, gan.discriminator.trainable_variables)
 
-            gan.generator_optimizer.apply_gradients(zip(gradients_of_generator, gan.generator.trainable_variables))
-            gan.discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, gan.discriminator.trainable_variables))
+        gan.generator_optimizer.apply_gradients(zip(gradients_of_generator, gan.generator.trainable_variables))
+        gan.discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, gan.discriminator.trainable_variables))
 
-        if epoch % 10 == 0:
-            print(f"Epoch {epoch}/{epochs}, Disc Loss: {disc_loss.numpy()}, Gen Loss: {gen_loss.numpy()}")
-            visualize_progress(epoch, gan.generator, noise_dim)
+    print(f"Epoch {epoch}/{epochs}, Disc Loss: {disc_loss.numpy()}, Gen Loss: {gen_loss.numpy()}")
+    visualize_progress(epoch, gan.generator, noise_dim)

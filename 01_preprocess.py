@@ -9,7 +9,7 @@ def load_cifar_batch(filename):
 
 # Load a smaller subset of the CIFAR-10 dataset (e.g., 1000 samples)
 subset_size = 100
-data_batch_1 = load_cifar_batch('data/data_batch_1')
+data_batch_1 = load_cifar_batch('dat/data_batch_2')
 data = data_batch_1[b'data'][:subset_size]
 
 # Normalize pixel values to [0, 1]
