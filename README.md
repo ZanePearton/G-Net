@@ -47,7 +47,7 @@ G-Net is an implementation of Generative Adversarial Networks (GAN) using Tensor
 4. **Monitor with TensorBoard**:
    Track the training progress visually using TensorBoard:
    ```bash
-   tensorboard --logdir logs/
+   tensorboard --logdir logs --reload_multifile true
    ```
 
 5. **Tweaking**:
