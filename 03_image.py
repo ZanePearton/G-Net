@@ -5,7 +5,7 @@ def unpickle(file):
         dict = pickle.load(fo, encoding='bytes')
     return dict
 
-data_dict = unpickle('dat/data_subset_10.pkl')
+data_dict = unpickle('dat/data_batch_2')
 images_data = data_dict[b'data']
 
 # The number of images in data_batch_2

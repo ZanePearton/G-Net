@@ -35,24 +35,23 @@ class GAN:
             tf.keras.layers.BatchNormalization(),
             tf.keras.layers.Dense(1024, activation='relu'),
             tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.Dense(3 * 32 * 32, activation='sigmoid'),
-            tf.keras.layers.Reshape((32, 32, 3))
+            tf.keras.layers.Dense(3 * 64 * 64, activation='sigmoid'),
+            tf.keras.layers.Reshape((64, 64, 3))
         ])
         return model
 
     def build_discriminator(self):
         model = tf.keras.Sequential([
-            tf.keras.layers.Input(shape=(32, 32, 3)),
-            tf.keras.layers.Conv2D(64, (3, 3), strides=(
-                2, 2), padding='same', activation='relu'),
+            tf.keras.layers.Input(shape=(64, 64, 3)),
+            tf.keras.layers.Conv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu'),
             tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.Conv2D(128, (3, 3), strides=(
-                2, 2), padding='same', activation='relu'),
+            tf.keras.layers.Conv2D(128, (3, 3), strides=(2, 2), padding='same', activation='relu'),
             tf.keras.layers.BatchNormalization(),
             tf.keras.layers.Flatten(),
             tf.keras.layers.Dense(1)  # No activation function here
         ])
         return model
+
 
     def generator_loss(self, fake_output):
         return self.cross_entropy(tf.ones_like(fake_output), fake_output)
@@ -63,12 +62,22 @@ class GAN:
         return real_loss + fake_loss
 
 
-def load_and_preprocess_data(filename):
-    with open(filename, 'rb') as f:
-        batch = pickle.load(f, encoding='bytes')
-    data = batch[b'data'].astype(np.float32) / 255.0
-    data = data.reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
-    return data
+def load_and_preprocess_data(DATA_DIR):
+    all_image_paths = []
+    for dirpath, _, filenames in os.walk(DATA_DIR):
+        for fname in filenames:
+            if fname.endswith('.jpg'):
+                all_image_paths.append(os.path.join(dirpath, fname))
+
+    def preprocess_image(img_path):
+        img = tf.io.read_file(img_path)
+        img = tf.image.decode_jpeg(img, channels=3)
+        img = tf.image.resize(img, [64, 64])  # Resize to the GAN input size
+        img = img / 255.0  # normalize to [0,1]
+        return img
+
+    return np.array([preprocess_image(path) for path in all_image_paths])
+
 
 def visualize_progress(epoch, generator, noise_dim, real_images, avg_disc_loss, avg_gen_loss):
     num_real_images = len(real_images)
