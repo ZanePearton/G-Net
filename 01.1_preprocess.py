@@ -2,7 +2,7 @@ import tensorflow as tf
 import os
 
 # Directory where the images are located
-DATA_DIR = '<dataset>'  # Replace 'path_to_directory' with the path to the parent directory
+DATA_DIR = '/Users/z.pearton/Documents/GitHub/dataset/lfw'  # Replace 'path_to_directory' with the path to the parent directory
 
 def preprocess_image(img_path):
     img = tf.io.read_file(img_path)
