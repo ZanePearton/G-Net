@@ -7,7 +7,6 @@ import os
 # import matplotlib
 # matplotlib.use('Agg')
 
-
 class GAN:
     def __init__(self, noise_dim):
         self.noise_dim = noise_dim
@@ -15,12 +14,9 @@ class GAN:
         self.discriminator = self.build_discriminator()
         self.cross_entropy = tf.keras.losses.BinaryCrossentropy(
             from_logits=True)
-        # self.generator_optimizer = tf.keras.optimizers.Adam(
-        #     learning_rate=0.0002, beta_1=0.5)
-        # self.discriminator_optimizer = tf.keras.optimizers.Adam(
-        #     learning_rate=0.0002, beta_1=0.5)
-        self.generator_optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=0.0002, beta_1=0.5)
-        self.discriminator_optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=0.0002, beta_1=0.5)
+        # Adjusting the learning rates:
+        self.generator_optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001, beta_1=0.5)
+        self.discriminator_optimizer = tf.keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5)
 
         # TensorBoard setup
         self.log_dir = 'logs/'
@@ -29,16 +25,19 @@ class GAN:
     def build_generator(self):
         model = tf.keras.Sequential([
             tf.keras.layers.Input(shape=(self.noise_dim,)),
-            tf.keras.layers.Dense(256, activation='relu'),
+            tf.keras.layers.Dense(256),
+            tf.keras.layers.LeakyReLU(alpha=0.2),
             tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.Dense(512, activation='relu'),
+            
+            tf.keras.layers.Dense(512),
+            tf.keras.layers.LeakyReLU(alpha=0.2),
             tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.Dense(1024, activation='relu'),
+            
+            tf.keras.layers.Dense(1024),
+            tf.keras.layers.LeakyReLU(alpha=0.2),
             tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.Dense(3 * 64 * 64, activation='sigmoid'),
-            # tf.keras.layers.Dense(3 * 64 * 64)
-
-
+            
+            tf.keras.layers.Dense(3 * 64 * 64, activation='tanh'),  # Using tanh activation for the final layer
             tf.keras.layers.Reshape((64, 64, 3))
         ])
         return model
@@ -46,23 +45,35 @@ class GAN:
     def build_discriminator(self):
         model = tf.keras.Sequential([
             tf.keras.layers.Input(shape=(64, 64, 3)),
-            tf.keras.layers.Conv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu'),
+            tf.keras.layers.Conv2D(64, (3, 3), strides=(2, 2), padding='same'),
+            tf.keras.layers.LeakyReLU(alpha=0.2),
             tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.Conv2D(128, (3, 3), strides=(2, 2), padding='same', activation='relu'),
+            
+            tf.keras.layers.Conv2D(128, (3, 3), strides=(2, 2), padding='same'),
+            tf.keras.layers.LeakyReLU(alpha=0.2),
             tf.keras.layers.BatchNormalization(),
+            
             tf.keras.layers.Flatten(),
             tf.keras.layers.Dense(1)  # No activation function here
         ])
         return model
 
 
+
+
+
+
     def generator_loss(self, fake_output):
         return self.cross_entropy(tf.ones_like(fake_output), fake_output)
 
     def discriminator_loss(self, real_output, fake_output):
-        real_loss = self.cross_entropy(tf.ones_like(real_output), real_output)
-        fake_loss = self.cross_entropy(tf.zeros_like(fake_output), fake_output)
+        real_labels = 0.9 * tf.ones_like(real_output)  # Smoothing for real labels
+        fake_labels = tf.zeros_like(fake_output)       # No smoothing for fake labels
+        
+        real_loss = self.cross_entropy(real_labels, real_output)
+        fake_loss = self.cross_entropy(fake_labels, fake_output)
         return real_loss + fake_loss
+
 
 
 def load_and_preprocess_data(DATA_DIR):
@@ -76,10 +87,12 @@ def load_and_preprocess_data(DATA_DIR):
         img = tf.io.read_file(img_path)
         img = tf.image.decode_jpeg(img, channels=3)
         img = tf.image.resize(img, [64, 64])  # Resize to the GAN input size
-        img = img / 255.0  # normalize to [0,1]
+        # Adjusting the image preprocessing:
+        img = (img / 255.0) * 2 - 1  # normalize to [-1,1]
         return img
 
     return np.array([preprocess_image(path) for path in all_image_paths])
+
 
 
 def visualize_progress(epoch, generator, noise_dim, real_images, avg_disc_loss, avg_gen_loss):
@@ -101,13 +114,17 @@ def visualize_progress(epoch, generator, noise_dim, real_images, avg_disc_loss, 
 
     # Loop for real images
     for i in range(num_real_images):
-        axes[0, i].imshow(real_images[i] * 0.5 + 0.5)
+        clipped_real_image = np.clip(real_images[i] * 0.5 + 0.5, 0, 1)
+        axes[0, i].imshow(clipped_real_image)
+
         axes[0, i].axis('off')
         axes[0, i].set_title('Real')
     
     # Loop for generated images
     for i in range(num_real_images):
-        axes[1, i].imshow(generated_images[i] * 0.5 + 0.5)
+        clipped_generated_image = np.clip(generated_images[i] * 0.5 + 0.5, 0, 1)
+        axes[1, i].imshow(clipped_generated_image)
+
         axes[1, i].axis('off')
         axes[1, i].set_title('Generated')
 
